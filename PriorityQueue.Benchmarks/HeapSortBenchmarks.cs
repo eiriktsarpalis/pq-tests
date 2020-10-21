@@ -1,8 +1,10 @@
 ﻿using BenchmarkDotNet.Attributes;
 using System;
+using System.Linq;
 
 namespace PriorityQueue.Benchmarks
 {
+    [MemoryDiagnoser]
     public class HeapSortBenchmarks
     {
         [Params(30, 300, 3000, 30_000)]
@@ -24,6 +26,12 @@ namespace PriorityQueue.Benchmarks
 
             _priorityQueue = new PriorityQueue<int, int>(initialCapacity: Size);
             _prioritySet = new PrioritySet<int, int>(initialCapacity: Size);
+        }
+
+        [Benchmark(Baseline = true)]
+        public void LinqSort()
+        {
+            _priorities.OrderBy(x => x).Count();
         }
 
         [Benchmark]
