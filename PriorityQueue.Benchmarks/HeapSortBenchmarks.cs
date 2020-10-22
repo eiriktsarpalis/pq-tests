@@ -7,12 +7,13 @@ namespace PriorityQueue.Benchmarks
     [MemoryDiagnoser]
     public class HeapSortBenchmarks
     {
-        [Params(30)] //, 300, 3000, 30_000)]
+        [Params(30, 300, 3000, 30_000)]
         public int Size;
 
         private int[] _priorities;
         private PriorityQueue<int, int> _priorityQueue;
         private PrioritySet<int, int> _prioritySet;
+        private int[] _linqSortBuffer;
 
         [GlobalSetup]
         public void Initialize()
@@ -26,12 +27,17 @@ namespace PriorityQueue.Benchmarks
 
             _priorityQueue = new PriorityQueue<int, int>(initialCapacity: Size);
             _prioritySet = new PrioritySet<int, int>(initialCapacity: Size);
+            _linqSortBuffer = new int[Size];
         }
 
         [Benchmark(Baseline = true)]
         public void LinqSort()
         {
-            _ = _priorities.OrderBy(x => x).Count();
+            int i = 0;
+            foreach (int priority in _priorities.OrderBy(x => x))
+            {
+                _linqSortBuffer[i++] = priority;
+            }
         }
 
         [Benchmark]
