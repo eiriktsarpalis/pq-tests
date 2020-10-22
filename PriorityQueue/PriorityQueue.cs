@@ -222,29 +222,18 @@ namespace PriorityQueue
 
             while ((minChildIndex = (index << 2) + 1) < count)
             {
+                // find the child with the minimal priority
                 ref TPriority minChildPriority = ref priorities[minChildIndex];
-                ref TPriority nextChildPriority = ref minChildPriority;
+                int childUpperBound = Math.Min(count, minChildIndex + 4);
 
-                int nextChildIndex = minChildIndex + 1;
-                if (nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
+                for (int nextChildIndex = minChildIndex + 1; nextChildIndex < childUpperBound; nextChildIndex++)
                 {
-                    // minChildPriority > nextChildPriority
-                    minChildIndex = nextChildIndex;
-                    minChildPriority = ref nextChildPriority;
-                }
-
-                if (++nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
-                {
-                    // minChildPriority > nextChildPriority
-                    minChildIndex = nextChildIndex;
-                    minChildPriority = ref nextChildPriority;
-                }
-
-                if (++nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
-                {
-                    // minChildPriority > nextChildPriority
-                    minChildIndex = nextChildIndex;
-                    minChildPriority = ref nextChildPriority;
+                    ref TPriority nextChildPriority = ref priorities[nextChildIndex];
+                    if (_priorityComparer.Compare(nextChildPriority, minChildPriority) < 0)
+                    {
+                        minChildIndex = nextChildIndex;
+                        minChildPriority = ref nextChildPriority;
+                    }
                 }
 
                 // compare with inserted priority
