@@ -100,7 +100,7 @@ namespace PriorityQueue
                 Resize(ref _priorities, ref _elements);
             }
 
-            SiftUp(index: _count++, element, priority);
+            SiftUp(index: _count++, in element, in priority);
         }
 
         public TElement EnqueueDequeue(TElement element, TPriority priority)
@@ -111,7 +111,7 @@ namespace PriorityQueue
             }
 
             TElement minElement = _elements[0];
-            SiftDown(index: 0, element, priority);
+            SiftDown(index: 0, in element, in priority);
             return minElement;
         }
 
@@ -162,9 +162,11 @@ namespace PriorityQueue
         #region Private Methods
         private void Heapify()
         {
-            for (int i = (_count >> 1) - 1; i >= 0; i--)
+            for (int i = (_count - 1) >> 2; i >= 0; i--)
             {
-                SiftDown(i, _elements[i], _priorities[i]);
+                TElement element = _elements[i];
+                TPriority priority = _priorities[i];
+                SiftDown(i, element, priority);
             }
         }
 
@@ -177,21 +179,24 @@ namespace PriorityQueue
 
             int lastElementPos = --_count;
 
+            ref TElement lastElement = ref _elements[lastElementPos];
+            ref TPriority lastPriority = ref _priorities[lastElementPos];
+
             if (lastElementPos > 0)
             {
-                SiftDown(index, _elements[lastElementPos], _priorities[lastElementPos]);
+                SiftDown(index, in lastElement, in lastPriority);
             }
 
-            _priorities[lastElementPos] = default!;
-            _elements[lastElementPos] = default!;
+            lastElement = default!;
+            lastPriority = default!;
         }
 
-        private void SiftUp(int index, TElement element, TPriority priority)
+        private void SiftUp(int index, in TElement element, in TPriority priority)
         {
             while (index > 0)
             {
-                int parentIndex = index - 1 >> 1;
-                TPriority parentPriority = _priorities[parentIndex];
+                int parentIndex = (index - 1) >> 2;
+                ref TPriority parentPriority = ref _priorities[parentIndex];
 
                 if (_priorityComparer.Compare(parentPriority, priority) <= 0)
                 {
@@ -208,41 +213,54 @@ namespace PriorityQueue
             _elements[index] = element;
         }
 
-        private void SiftDown(int index, TElement element, TPriority priority)
+        private void SiftDown(int index, in TElement element, in TPriority priority)
         {
+            int minChildIndex;
             int count = _count;
+            TPriority[] priorities = _priorities;
+            TElement[] elements = _elements;
 
-            while (true)
+            while ((minChildIndex = (index << 2) + 1) < count)
             {
-                int childIndex = (index << 1) + 1;
-                if (childIndex >= count)
+                ref TPriority minChildPriority = ref priorities[minChildIndex];
+                ref TPriority nextChildPriority = ref minChildPriority;
+
+                int nextChildIndex = minChildIndex + 1;
+                if (nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
                 {
-                    break;
+                    // minChildPriority > nextChildPriority
+                    minChildIndex = nextChildIndex;
+                    minChildPriority = ref nextChildPriority;
                 }
 
-                TPriority childPriority = _priorities[childIndex];
-
-                // find the minimal element among the two children
-                int rightChildIndex = childIndex + 1;
-                if (rightChildIndex < count && _priorityComparer.Compare(childPriority, _priorities[rightChildIndex]) > 0)
+                if (++nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
                 {
-                    childIndex = rightChildIndex;
-                    childPriority = _priorities[rightChildIndex];
+                    // minChildPriority > nextChildPriority
+                    minChildIndex = nextChildIndex;
+                    minChildPriority = ref nextChildPriority;
                 }
 
-                if (_priorityComparer.Compare(priority, childPriority) <= 0)
+                if (++nextChildIndex < count && _priorityComparer.Compare(minChildPriority, (nextChildPriority = ref priorities[nextChildIndex])) > 0)
+                {
+                    // minChildPriority > nextChildPriority
+                    minChildIndex = nextChildIndex;
+                    minChildPriority = ref nextChildPriority;
+                }
+
+                // compare with inserted priority
+                if (_priorityComparer.Compare(priority, minChildPriority) <= 0)
                 {
                     // priority <= childPriority, heap property is satisfied
                     break;
                 }
 
-                _priorities[index] = _priorities[childIndex];
-                _elements[index] = _elements[childIndex];
-                index = childIndex;
+                priorities[index] = minChildPriority;
+                elements[index] = elements[minChildIndex];
+                index = minChildIndex;
             }
 
-            _priorities[index] = priority;
-            _elements[index] = element;
+            priorities[index] = priority;
+            elements[index] = element;
         }
 
         private void Resize(ref TPriority[] priorities, ref TElement[] elements)
