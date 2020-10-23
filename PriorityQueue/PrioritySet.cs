@@ -19,22 +19,22 @@ namespace PriorityQueue
         private int _version;
 
         #region Constructors
-        public PrioritySet() : this(0, null)
+        public PrioritySet() : this(0, null, null)
         {
 
         }
 
-        public PrioritySet(int initialCapacity) : this(initialCapacity, null)
+        public PrioritySet(int initialCapacity) : this(initialCapacity, null, null)
         {
 
         }
 
-        public PrioritySet(IComparer<TPriority> comparer) : this(0, null)
+        public PrioritySet(IComparer<TPriority> comparer) : this(0, null, null)
         {
 
         }
 
-        public PrioritySet(int initialCapacity, IComparer<TPriority>? priorityComparer, IEqualityComparer<TElement>? elementComparer = null)
+        public PrioritySet(int initialCapacity, IComparer<TPriority>? priorityComparer, IEqualityComparer<TElement>? elementComparer)
         {
             if (initialCapacity < 0)
             {
@@ -56,12 +56,12 @@ namespace PriorityQueue
             _priorityComparer = priorityComparer ?? Comparer<TPriority>.Default;
         }
 
-        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, null)
+        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, null, null)
         {
 
         }
 
-        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer, IEqualityComparer<TElement>? elementComparer = null)
+        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer, IEqualityComparer<TElement>? elementComparer)
         {
             var priorities = Array.Empty<TPriority>();
             var elements = Array.Empty<TElement>();
