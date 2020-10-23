@@ -7,7 +7,7 @@ namespace PriorityQueue.Benchmarks
     [MemoryDiagnoser]
     public class HeapSortBenchmarks
     {
-        [Params(30, 300)] //, 3000, 30_000)]
+        [Params(30, 300, 3000, 30_000)]
         public int Size;
 
         private int[] _priorities;
