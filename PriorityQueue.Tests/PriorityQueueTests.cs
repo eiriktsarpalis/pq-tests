@@ -24,6 +24,17 @@ namespace PriorityQueue.Tests
             Assert.Equal("George", pq.Dequeue());
         }
 
+        [Fact]
+        public static void Simple_Priority_Queue_Heapify()
+        {
+            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
+
+            Assert.Equal("John", pq.Dequeue());
+            Assert.Equal("Ringo", pq.Dequeue());
+            Assert.Equal("Paul", pq.Dequeue());
+            Assert.Equal("George", pq.Dequeue());
+        }
+
         [Property(MaxTest = 10_000)]
         public static void HeapSort_Should_Work(string[] inputs)
         {

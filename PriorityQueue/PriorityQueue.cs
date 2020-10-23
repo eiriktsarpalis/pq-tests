@@ -178,7 +178,6 @@ namespace PriorityQueue
             priority = _priorities[index];
 
             int lastElementPos = --_count;
-
             ref TElement lastElement = ref _elements[lastElementPos];
             ref TPriority lastPriority = ref _priorities[lastElementPos];
 
@@ -322,16 +321,6 @@ namespace PriorityQueue
             }
 #endif
         }
-        //#region Specific APIs
-        //public TElement Dequeue() { throw null; }
-        //public void Enqueue(TElement item, TPriority priority) { }
-        //public TElement Peek() { throw null; }
-        //public bool TryDequeue(out TElement item) { throw null; }
-        //public bool TryPeek(out TElement item) { throw null; }
-        //public void TrimExcess() { }
-        //public bool Contains(TElement element) { }
-        //public bool TryRemove(TElement element) { }
-        //#endregion
 
         //#region IReadOnlyCollection
         //public int Count { get { throw null; } }
