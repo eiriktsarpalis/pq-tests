@@ -109,21 +109,6 @@ namespace PriorityQueue
             Insert(element, priority);
         }
 
-        public TElement EnqueueDequeue(TElement element, TPriority priority)
-        {
-            if (_count == 0 || _priorityComparer.Compare(priority, _priorities[0]) <= 0)
-            {
-                return element;
-            }
-
-            _version++;
-            TElement minElement = _elements[0];
-            _index.Remove(minElement);
-            SiftDown(index: 0, in element, in priority);
-
-            return minElement;
-        }
-
         public TElement Peek()
         {
             if (_count == 0)
@@ -132,6 +117,20 @@ namespace PriorityQueue
             }
 
             return _elements[0];
+        }
+
+        public bool TryPeek(out TElement element, out TPriority priority)
+        {
+            if (_count == 0)
+            {
+                element = default!;
+                priority = default!;
+                return false;
+            }
+
+            element = _elements[0];
+            priority = _priorities[0];
+            return true;
         }
 
         public TElement Dequeue()
@@ -158,6 +157,34 @@ namespace PriorityQueue
             _version++;
             RemoveIndex(index: 0, out element, out priority);
             return true;
+        }
+
+        public TElement EnqueueDequeue(TElement element, TPriority priority)
+        {
+            if (_count == 0 || _priorityComparer.Compare(priority, _priorities[0]) <= 0)
+            {
+                return element;
+            }
+
+            _version++;
+            TElement minElement = _elements[0];
+            _index.Remove(minElement);
+            SiftDown(index: 0, in element, in priority);
+
+            return minElement;
+        }
+
+        public void Clear()
+        {
+            _version++;
+            if (_count > 0)
+            {
+                //TODO: guard with RuntimeHelpers.IsReferenceOrContainsReferences<>()
+                Array.Clear(_priorities, 0, _count);
+                Array.Clear(_elements, 0, _count);
+                _index.Clear();
+                _count = 0;
+            }
         }
 
         public bool Contains(TElement element) => _index.ContainsKey(element);
@@ -196,19 +223,6 @@ namespace PriorityQueue
             else
             {
                 Insert(element, priority);
-            }
-        }
-
-        public void Clear()
-        {
-            _version++;
-            if (_count > 0)
-            {
-                //TODO: guard with RuntimeHelpers.IsReferenceOrContainsReferences<>()
-                Array.Clear(_priorities, 0, _count);
-                Array.Clear(_elements, 0, _count);
-                _index.Clear();
-                _count = 0;
             }
         }
 
