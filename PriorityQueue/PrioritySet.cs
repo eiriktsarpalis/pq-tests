@@ -16,33 +16,29 @@ namespace PriorityQueue
         private TPriority[] _priorities;
         private TElement[] _elements;
         private int _count;
+        private int _version;
 
         #region Constructors
-        public PrioritySet() : this(0, Comparer<TPriority>.Default)
+        public PrioritySet() : this(0, null)
         {
 
         }
 
-        public PrioritySet(int initialCapacity) : this(initialCapacity, Comparer<TPriority>.Default)
+        public PrioritySet(int initialCapacity) : this(initialCapacity, null)
         {
 
         }
 
-        public PrioritySet(IComparer<TPriority> comparer) : this(0, Comparer<TPriority>.Default)
+        public PrioritySet(IComparer<TPriority> comparer) : this(0, null)
         {
 
         }
 
-        public PrioritySet(int initialCapacity, IComparer<TPriority> priorityComparer, IEqualityComparer<TElement>? elementComparer = null)
+        public PrioritySet(int initialCapacity, IComparer<TPriority>? priorityComparer, IEqualityComparer<TElement>? elementComparer = null)
         {
             if (initialCapacity < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(initialCapacity));
-            }
-
-            if (priorityComparer is null)
-            {
-                throw new ArgumentNullException(nameof(priorityComparer));
             }
 
             if (initialCapacity == 0)
@@ -57,18 +53,18 @@ namespace PriorityQueue
             }
 
             _index = new Dictionary<TElement, int>(initialCapacity, comparer: elementComparer);
-            _priorityComparer = priorityComparer;
+            _priorityComparer = priorityComparer ?? Comparer<TPriority>.Default;
         }
 
-        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, Comparer<TPriority>.Default)
+        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, null)
         {
 
         }
 
-        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority> comparer, IEqualityComparer<TElement>? elementComparer = null)
+        public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer, IEqualityComparer<TElement>? elementComparer = null)
         {
-            var priorities = new TPriority[DefaultCapacity];
-            var elements = new TElement[DefaultCapacity];
+            var priorities = Array.Empty<TPriority>();
+            var elements = Array.Empty<TElement>();
             var heapIndex = new Dictionary<TElement, int>(elementComparer);
             int count = 0;
 
@@ -92,7 +88,7 @@ namespace PriorityQueue
             _priorities = priorities;
             _elements = elements;
             _index = heapIndex;
-            _priorityComparer = comparer;
+            _priorityComparer = comparer ?? Comparer<TPriority>.Default;
             _count = count;
 
             Heapify();
@@ -109,6 +105,7 @@ namespace PriorityQueue
                 throw new InvalidOperationException("Duplicate element");
             }
 
+            _version++;
             Insert(element, priority);
         }
 
@@ -119,6 +116,7 @@ namespace PriorityQueue
                 return element;
             }
 
+            _version++;
             TElement minElement = _elements[0];
             _index.Remove(minElement);
             SiftDown(index: 0, in element, in priority);
@@ -142,7 +140,8 @@ namespace PriorityQueue
             {
                 throw new InvalidOperationException("queue is empty");
             }
-            
+
+            _version++;
             RemoveIndex(index: 0, out TElement result, out TPriority _);
             return result;
         }
@@ -156,6 +155,7 @@ namespace PriorityQueue
                 return false;
             }
 
+            _version++;
             RemoveIndex(index: 0, out element, out priority);
             return true;
         }
@@ -169,6 +169,7 @@ namespace PriorityQueue
                 return false;
             }
 
+            _version++;
             RemoveIndex(index, out var _, out var _);
             return true;
         }
@@ -180,12 +181,14 @@ namespace PriorityQueue
                 return false;
             }
 
+            _version++;
             UpdateIndex(index, priority);
             return true;
         }
 
         public void EnqueueOrUpdate(TElement element, TPriority priority)
         {
+            _version++;
             if (_index.TryGetValue(element, out int index))
             {
                 UpdateIndex(index, priority);
@@ -198,6 +201,7 @@ namespace PriorityQueue
 
         public void Clear()
         {
+            _version++;
             if (_count > 0)
             {
                 //TODO: guard with RuntimeHelpers.IsReferenceOrContainsReferences<>()
@@ -205,6 +209,63 @@ namespace PriorityQueue
                 Array.Clear(_elements, 0, _count);
                 _index.Clear();
                 _count = 0;
+            }
+        }
+
+        public Enumerator GetEnumerator() => new Enumerator(this);
+        IEnumerator<(TElement Element, TPriority Priority)> IEnumerable<(TElement Element, TPriority Priority)>.GetEnumerator() => new Enumerator(this);
+        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
+
+        public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator
+        {
+            private readonly PrioritySet<TElement, TPriority> _queue;
+            private readonly int _version;
+            private int _index;
+            private (TElement Element, TPriority Priority) _current;
+
+            internal Enumerator(PrioritySet<TElement, TPriority> queue)
+            {
+                _version = queue._version;
+                _queue = queue;
+                _index = 0;
+                _current = default;
+            }
+
+            public bool MoveNext()
+            {
+                PrioritySet<TElement, TPriority> queue = _queue;
+
+                if (queue._version == _version && _index < queue._count)
+                {
+                    _current = (queue._elements[_index], queue._priorities[_index]);
+                    _index++;
+                    return true;
+                }
+
+                if (queue._version != _version)
+                {
+                    throw new InvalidOperationException("collection was modified");
+                }
+
+                return false;
+            }
+
+            public (TElement Element, TPriority Priority) Current => _current;
+            object IEnumerator.Current => _current;
+
+            public void Reset()
+            {
+                if (_queue._version != _version)
+                {
+                    throw new InvalidOperationException("collection was modified");
+                }
+
+                _index = 0;
+                _current = default;
+            }
+
+            public void Dispose()
+            {
             }
         }
 
@@ -351,27 +412,9 @@ namespace PriorityQueue
             Array.Resize(ref elements, newSize);
         }
 
-        public IEnumerator<(TElement Element, TPriority Priority)> GetEnumerator()
-        {
-            return GetEnumerableInner().GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerableInner().GetEnumerator();
-        }
-
-        private IEnumerable<(TElement Element, TPriority Priority)> GetEnumerableInner()
-        {
-            for (int i = 0; i < _count; i++)
-            {
-                yield return (_elements[i], _priorities[i]);
-            }
-        }
-
+#if DEBUG
         public void ValidateInternalState()
         {
-#if DEBUG
             if (_elements.Length < _count)
             {
                 throw new Exception("invalid elements array length");
@@ -387,7 +430,7 @@ namespace PriorityQueue
                 throw new Exception("Invalid heap index count");
             }
 
-            foreach ((var element, var idx) in _elements.Select((x,i) => (x,i)).Skip(_count))
+            foreach ((var element, var idx) in _elements.Select((x, i) => (x, i)).Skip(_count))
             {
                 if (!IsDefault(element))
                 {
@@ -422,34 +465,8 @@ namespace PriorityQueue
 
                 return value!.Equals(defaultVal);
             }
-#endif
         }
-
-        //#region IReadOnlyCollection
-        //public int Count { get { throw null; } }
-        //public IEnumerator GetEnumerator() { throw null; }
-
-        //IEnumerator<(TElement Element, TPriority Priority)> IEnumerable<(TElement Element, TPriority Priority)>.GetEnumerator()
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-        //{
-        //    throw new NotImplementedException();
-        //}
-        //#endregion
-
-        //#region Enumerator
-        //public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator, IDisposable
-        //{
-        //    public (TElement Element, TPriority Priority) Current { get { throw null; } }
-        //    object System.Collections.IEnumerator.Current { get { throw null; } }
-        //    public void Dispose() { }
-        //    public bool MoveNext() { throw null; }
-        //    void System.Collections.IEnumerator.Reset() { }
-        //}
-        //#endregion
-#endregion
+#endif
+        #endregion
     }
 }

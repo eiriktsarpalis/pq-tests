@@ -35,6 +35,15 @@ namespace PriorityQueue.Tests
             Assert.Equal("George", pq.Dequeue());
         }
 
+        [Fact]
+        public static void Simple_Priority_Queue_Enumeration()
+        {
+            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
+
+            (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) };
+            Assert.Equal(expected, pq.ToArray());
+        }
+
         [Property(MaxTest = 10_000)]
         public static void HeapSort_Should_Work(string[] inputs)
         {
@@ -45,12 +54,12 @@ namespace PriorityQueue.Tests
             static IEnumerable<string> HeapSort(string[] inputs)
             {
                 var pq = new PriorityQueue<string, string>();
-                pq.ValidateInternalState();
+                ValidateState(pq);
 
                 foreach (string input in inputs)
                 {
                     pq.Enqueue(input, input);
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
 
                 Assert.Equal(inputs.Length, pq.Count);
@@ -58,7 +67,7 @@ namespace PriorityQueue.Tests
                 while (pq.Count > 0)
                 {
                     yield return pq.Dequeue();
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
             }
         }
@@ -74,15 +83,22 @@ namespace PriorityQueue.Tests
             {
                 var pq = new PriorityQueue<string, string>(inputs.Select(x => (x,x)));
 
-                pq.ValidateInternalState();
+                ValidateState(pq);
                 Assert.Equal(inputs.Length, pq.Count);
 
                 while (pq.Count > 0)
                 {
                     yield return pq.Dequeue();
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
             }
+        }
+
+        private static void ValidateState<TElement, TPriority>(PriorityQueue<TElement, TPriority> pq)
+        {
+#if DEBUG
+            pq.ValidateInternalState();
+#endif
         }
     }
 }

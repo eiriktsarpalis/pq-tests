@@ -36,6 +36,15 @@ namespace PriorityQueue.Tests
             Assert.Equal("George", pq.Dequeue());
         }
 
+        [Fact]
+        public static void Simple_Priority_Queue_Enumeration()
+        {
+            var pq = new PrioritySet<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
+
+            (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) };
+            Assert.Equal(expected, pq.ToArray());
+        }
+
         [Property(MaxTest = 10_000, Arbitrary = new Type[] { typeof(RandomGenerators) })]
         public static void HeapSort_Should_Work(int[] inputs)
         {
@@ -46,12 +55,12 @@ namespace PriorityQueue.Tests
             static IEnumerable<int> HeapSort(int[] inputs)
             {
                 var pq = new PrioritySet<int, int>();
-                pq.ValidateInternalState();
+                ValidateState(pq);
 
                 foreach (int input in inputs)
                 {
                     pq.Enqueue(input, input);
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
 
                 Assert.Equal(inputs.Length, pq.Count);
@@ -59,7 +68,7 @@ namespace PriorityQueue.Tests
                 while (pq.Count > 0)
                 {
                     yield return pq.Dequeue();
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
             }
         }
@@ -75,13 +84,13 @@ namespace PriorityQueue.Tests
             {
                 var pq = new PrioritySet<int, int>(inputs.Select(x => (x, x)));
 
-                pq.ValidateInternalState();
+                ValidateState(pq);
                 Assert.Equal(inputs.Length, pq.Count);
 
                 while (pq.Count > 0)
                 {
                     yield return pq.Dequeue();
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
             }
         }
@@ -90,13 +99,13 @@ namespace PriorityQueue.Tests
         public static void Removing_Elements_Should_Work(int[] inputs)
         {
             var pq = new PrioritySet<int, int>(inputs.Select(x => (x, x)));
-            pq.ValidateInternalState();
+            ValidateState(pq);
 
             for (int i = 0; i < inputs.Length; i++)
             {
                 Assert.True(pq.TryRemove(inputs[i]));
                 Assert.Equal(inputs.Length - i - 1, pq.Count);
-                pq.ValidateInternalState();
+                ValidateState(pq);
             }
 
             Assert.Empty(pq);
@@ -111,21 +120,28 @@ namespace PriorityQueue.Tests
             static IEnumerable<int> HeapSort(int[] inputs)
             {
                 var pq = new PrioritySet<int, int>(inputs.Select(x => (x, 0)));
-                pq.ValidateInternalState();
+                ValidateState(pq);
 
                 for (int i = 0; i < inputs.Length; i++)
                 {
                     Assert.True(pq.TryUpdate(inputs[i], inputs[i]));
                     Assert.Equal(inputs.Length, pq.Count);
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
 
                 while (pq.Count > 0)
                 {
                     yield return pq.Dequeue();
-                    pq.ValidateInternalState();
+                    ValidateState(pq);
                 }
             }
+        }
+
+        private static void ValidateState<TElement, TPriority>(PrioritySet<TElement, TPriority> ps)
+        {
+#if DEBUG
+            ps.ValidateInternalState();
+#endif
         }
 
         public static class RandomGenerators
