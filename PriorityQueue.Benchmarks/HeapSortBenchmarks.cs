@@ -11,6 +11,7 @@ namespace PriorityQueue.Benchmarks
         public int Size;
 
         private int[] _priorities;
+        private PriorityQueue<int> _priorityQueue2;
         private PriorityQueue<int, int> _priorityQueue;
         private PrioritySet<int, int> _prioritySet;
 
@@ -24,6 +25,7 @@ namespace PriorityQueue.Benchmarks
                 _priorities[i] = random.Next(20);
             }
 
+            _priorityQueue2 = new PriorityQueue<int>(initialCapacity: Size);
             _priorityQueue = new PriorityQueue<int, int>(initialCapacity: Size);
             _prioritySet = new PrioritySet<int, int>(initialCapacity: Size);
         }
@@ -45,6 +47,23 @@ namespace PriorityQueue.Benchmarks
             for (int i = 0; i < Size; i++)
             {
                 queue.Enqueue(i, priorities[i]);
+            }
+
+            while (queue.Count > 0)
+            {
+                queue.Dequeue();
+            }
+        }
+
+        [Benchmark]
+        public void PriorityQueue2()
+        {
+            var queue = _priorityQueue2;
+            var priorities = _priorities;
+
+            for (int i = 0; i < Size; i++)
+            {
+                queue.Enqueue(priorities[i]);
             }
 
             while (queue.Count > 0)
