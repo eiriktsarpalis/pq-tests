@@ -68,6 +68,12 @@ namespace PriorityQueue.Benchmarks
                 queue.Enqueue(priorities[i]);
             }
 
+            for (int i = Size; i < 2 * Size; i++)
+            {
+                queue.Dequeue();
+                queue.Enqueue(i, priorities[i]);
+            }
+
             while (queue.Count > 0)
             {
                 queue.Dequeue();
@@ -105,13 +111,13 @@ namespace PriorityQueue.Benchmarks
 
             for (int i = 0; i < Size; i++)
             {
-                heap.Add(i, priorities[i]);
+                heap.Add(priorities[i], i);
             }
 
             for (int i = Size; i < 2 * Size; i++)
             {
                 heap.Pop();
-                heap.Add(i, priorities[i]);
+                heap.Add(priorities[i], i);
             }
 
             while (heap.Count > 0)
