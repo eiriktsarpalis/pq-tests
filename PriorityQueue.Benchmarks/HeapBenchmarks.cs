@@ -71,7 +71,7 @@ namespace PriorityQueue.Benchmarks
             for (int i = Size; i < 2 * Size; i++)
             {
                 queue.Dequeue();
-                queue.Enqueue(i, priorities[i]);
+                queue.Enqueue(priorities[i]);
             }
 
             while (queue.Count > 0)
