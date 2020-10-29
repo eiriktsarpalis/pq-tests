@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace PriorityQueue
 {
-    public class PriorityQueue<TElement, TPriority> : IReadOnlyCollection<(TElement Element, TPriority Priority)>
+    public class PriorityQueue<TElement, TPriority> : IReadOnlyCollection<(TElement Element, TPriority Priority)>, ICollection
     {
         private const int DefaultCapacity = 4;
 
@@ -61,27 +61,12 @@ namespace PriorityQueue
 
         public PriorityQueue(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer) 
         {
-            var priorities = Array.Empty<TPriority>();
-            var elements = Array.Empty<TElement>();
-            int count = 0;
-
-            foreach ((TElement element, TPriority priority) in values)
-            {
-                if (count == priorities.Length)
-                {
-                    Resize(ref priorities, ref elements);
-                }
-
-                priorities[count] = priority;
-                elements[count] = element;
-                count++;
-            }
-
-            _priorities = priorities;
-            _elements = elements;
             _priorityComparer = comparer ?? Comparer<TPriority>.Default;
-            _count = count;
+            _priorities = Array.Empty<TPriority>();
+            _elements = Array.Empty<TElement>();
+            _count = 0;
 
+            AppendRaw(values);
             Heapify();
         }
         #endregion
@@ -98,6 +83,28 @@ namespace PriorityQueue
             }
 
             SiftUp(index: _count++, in element, in priority);
+        }
+
+        public void EnqueueRange(IEnumerable<(TElement Element, TPriority Priority)> values)
+        {
+            _version++;
+            if (_count == 0)
+            {
+                AppendRaw(values);
+                Heapify();
+            }
+            else
+            {
+                foreach((TElement element, TPriority priority) in values)
+                {
+                    if (_count == _priorities.Length)
+                    {
+                        Resize(ref _priorities, ref _elements);
+                    }
+
+                    SiftUp(index: _count++, in element, in priority);
+                }
+            }
         }
 
         public TElement Peek()
@@ -174,9 +181,47 @@ namespace PriorityQueue
             }
         }
 
+        public void TrimExcess()
+        {
+            Debug.Assert(_priorities.Length == _elements.Length);
+
+            int count = _count;
+            int threshold = (int)(((double)_elements.Length) * 0.9);
+            if (count < threshold)
+            {
+                Array.Resize(ref _elements, count);
+                Array.Resize(ref _priorities, count);
+            }
+        }
+
         public Enumerator GetEnumerator() => new Enumerator(this);
         IEnumerator<(TElement Element, TPriority Priority)> IEnumerable<(TElement Element, TPriority Priority)>.GetEnumerator() => new Enumerator(this);
         IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
+
+        bool ICollection.IsSynchronized => false;
+        object ICollection.SyncRoot => this;
+        void ICollection.CopyTo(Array array, int index)
+        {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+            if (array.Rank != 1)
+                throw new ArgumentException("SR.Arg_RankMultiDimNotSupported", nameof(array));
+            if (index < 0)
+                throw new ArgumentOutOfRangeException(nameof(index), "SR.ArgumentOutOfRange_Index");
+
+            int arrayLen = array.Length;
+            if (arrayLen - index < _count)
+                throw new ArgumentException("SR.Argument_InvalidOffLen");
+
+            int numToCopy = _count;
+            TElement[] elements = _elements;
+            TPriority[] priorities = _priorities;
+
+            for (int i = 0; i < numToCopy; i++)
+            {
+                array.SetValue((elements[i], priorities[i]), index + i);
+            }
+        }
 
         public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator
         {
@@ -231,6 +276,94 @@ namespace PriorityQueue
             }
         }
 
+        public ElementCollection Elements => new ElementCollection(this);
+
+        public class ElementCollection : IReadOnlyCollection<TElement>, ICollection
+        {
+            private readonly PriorityQueue<TElement, TPriority> _priorityQueue;
+
+            internal ElementCollection(PriorityQueue<TElement, TPriority> priorityQueue)
+            {
+                _priorityQueue = priorityQueue;
+            }
+
+            public int Count => _priorityQueue.Count;
+            public bool IsSynchronized => false;
+            public object SyncRoot => _priorityQueue;
+
+            public void CopyTo(Array array, int index)
+            {
+                if (array == null)
+                    throw new ArgumentNullException(nameof(array));
+                if (array.Rank != 1)
+                    throw new ArgumentException("SR.Arg_RankMultiDimNotSupported", nameof(array));
+                if (index < 0)
+                    throw new ArgumentOutOfRangeException(nameof(index), "SR.ArgumentOutOfRange_Index");
+
+                int arrayLen = array.Length;
+                if (arrayLen - index < _priorityQueue._count)
+                    throw new ArgumentException("SR.Argument_InvalidOffLen");
+
+                Array.Copy(_priorityQueue._elements, 0, array, index, _priorityQueue._count);
+            }
+
+            public IEnumerator<TElement> GetEnumerator() => new Enumerator(_priorityQueue);
+            IEnumerator IEnumerable.GetEnumerator() => new Enumerator(_priorityQueue);
+
+            public struct Enumerator : IEnumerator<TElement>, IEnumerator
+            {
+                private readonly PriorityQueue<TElement, TPriority> _queue;
+                private readonly int _version;
+                private int _index;
+                private TElement _current;
+
+                internal Enumerator(PriorityQueue<TElement, TPriority> queue)
+                {
+                    _version = queue._version;
+                    _queue = queue;
+                    _index = 0;
+                    _current = default!;
+                }
+
+                public bool MoveNext()
+                {
+                    PriorityQueue<TElement, TPriority> queue = _queue;
+
+                    if (queue._version == _version && _index < queue._count)
+                    {
+                        _current = queue._elements[_index];
+                        _index++;
+                        return true;
+                    }
+
+                    if (queue._version != _version)
+                    {
+                        throw new InvalidOperationException("collection was modified");
+                    }
+
+                    return false;
+                }
+
+                public TElement Current => _current;
+                object? IEnumerator.Current => _current;
+
+                public void Reset()
+                {
+                    if (_queue._version != _version)
+                    {
+                        throw new InvalidOperationException("collection was modified");
+                    }
+
+                    _index = 0;
+                    _current = default!;
+                }
+
+                public void Dispose()
+                {
+                }
+            }
+        }
+
         #region Private Methods
         private void Heapify()
         {
@@ -240,6 +373,30 @@ namespace PriorityQueue
                 TPriority priority = _priorities[i];
                 SiftDown(i, element, priority);
             }
+        }
+
+        private void AppendRaw(IEnumerable<(TElement Element, TPriority Priority)> values)
+        {
+            // TODO: specialize on ICollection types
+            var priorities = _priorities;
+            var elements = _elements;
+            int count = _count;
+
+            foreach ((TElement element, TPriority priority) in values)
+            {
+                if (count == priorities.Length)
+                {
+                    Resize(ref priorities, ref elements);
+                }
+
+                priorities[count] = priority;
+                elements[count] = element;
+                count++;
+            }
+
+            _priorities = priorities;
+            _elements = elements;
+            _count = count;
         }
 
         private void RemoveIndex(int index, out TElement element, out TPriority priority)
