@@ -78,7 +78,7 @@ namespace PriorityQueue
                 Resize(ref _heap);
             }
 
-            SiftUp(index: _count++, new HeapEntry(in element, in priority));
+            SiftUp(index: _count++, in element, in priority);
         }
 
         public void EnqueueRange(IEnumerable<(TElement Element, TPriority Priority)> values)
@@ -98,7 +98,7 @@ namespace PriorityQueue
                         Resize(ref _heap);
                     }
 
-                    SiftUp(index: _count++, new HeapEntry(in element, in priority));
+                    SiftUp(index: _count++, in element, in priority);
                 }
             }
         }
@@ -167,7 +167,7 @@ namespace PriorityQueue
 
             _version++;
             TElement minElement = minEntry.Element;
-            SiftDown(index: 0, new HeapEntry(in element, in priority));
+            SiftDown(index: 0, in element, in priority);
             return minElement;
         }
 
@@ -376,7 +376,7 @@ namespace PriorityQueue
             for (int i = (_count - 1) >> 2; i >= 0; i--)
             {
                 HeapEntry entry = heap[i]; // ensure struct is copied before sifting
-                SiftDown(i, entry);
+                SiftDown(i, in entry.Element, in entry.Priority);
             }
         }
 
@@ -414,20 +414,20 @@ namespace PriorityQueue
 
             if (lastElementPos > 0)
             {
-                SiftDown(index, in lastElement);
+                SiftDown(index, in lastElement.Element, in lastElement.Priority);
             }
 
             lastElement = default;
         }
 
-        private void SiftUp(int index, in HeapEntry entry)
+        private void SiftUp(int index, in TElement element, in TPriority priority)
         {
             while (index > 0)
             {
                 int parentIndex = (index - 1) >> 2;
                 ref HeapEntry parent = ref _heap[parentIndex];
 
-                if (_priorityComparer.Compare(parent.Priority, entry.Priority) <= 0)
+                if (_priorityComparer.Compare(parent.Priority, priority) <= 0)
                 {
                     // parentPriority <= priority, heap property is satisfed
                     break;
@@ -437,10 +437,12 @@ namespace PriorityQueue
                 index = parentIndex;
             }
 
-            _heap[index] = entry;
+            ref HeapEntry entry = ref _heap[index];
+            entry.Element = element;
+            entry.Priority = priority;
         }
 
-        private void SiftDown(int index, in HeapEntry entry)
+        private void SiftDown(int index, in TElement element, in TPriority priority)
         {
             int minChildIndex;
             int count = _count;
@@ -463,7 +465,7 @@ namespace PriorityQueue
                 }
 
                 // compare with inserted priority
-                if (_priorityComparer.Compare(entry.Priority, minChild.Priority) <= 0)
+                if (_priorityComparer.Compare(priority, minChild.Priority) <= 0)
                 {
                     // priority <= minChild, heap property is satisfied
                     break;
@@ -473,7 +475,9 @@ namespace PriorityQueue
                 index = minChildIndex;
             }
 
-            heap[index] = entry;
+            ref HeapEntry entry = ref heap[index];
+            entry.Element = element;
+            entry.Priority = priority;
         }
 
         private void Resize(ref HeapEntry[] heap)
@@ -486,12 +490,6 @@ namespace PriorityQueue
         {
             public TElement Element;
             public TPriority Priority;
-
-            public HeapEntry(in TElement element, in TPriority priority)
-            {
-                Element = element;
-                Priority = priority;
-            }
 
             public void Deconstruct(out TElement element, out TPriority priority)
             {
