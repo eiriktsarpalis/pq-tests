@@ -15,7 +15,6 @@ namespace PriorityQueue.Benchmarks
         private int[] _priorities;
         private PriorityQueue<int> _priorityQueue2;
         private PriorityQueue<int, int> _priorityQueue;
-        private PriorityQueueSingleArray<int, int> _priorityQueueSingleArray;
         private PrioritySet<int, int> _prioritySet;
         private PairingHeap<int, int> _pairingHeap;
 
@@ -31,7 +30,6 @@ namespace PriorityQueue.Benchmarks
 
             _priorityQueue2 = new PriorityQueue<int>(initialCapacity: Size);
             _priorityQueue = new PriorityQueue<int, int>(initialCapacity: Size);
-            _priorityQueueSingleArray = new PriorityQueueSingleArray<int, int>(initialCapacity: Size);
             _prioritySet = new PrioritySet<int, int>(initialCapacity: Size);
             _pairingHeap = new PairingHeap<int, int>(Comparer<int>.Default);
         }
@@ -74,29 +72,6 @@ namespace PriorityQueue.Benchmarks
             {
                 queue.Dequeue();
                 queue.Enqueue(priorities[i]);
-            }
-
-            while (queue.Count > 0)
-            {
-                queue.Dequeue();
-            }
-        }
-
-        [Benchmark]
-        public void PriorityQueueSingleArray()
-        {
-            var queue = _priorityQueueSingleArray;
-            var priorities = _priorities;
-
-            for (int i = 0; i < Size; i++)
-            {
-                queue.Enqueue(i, priorities[i]);
-            }
-
-            for (int i = Size; i < 2 * Size; i++)
-            {
-                queue.Dequeue();
-                queue.Enqueue(i, priorities[i]);
             }
 
             while (queue.Count > 0)
