@@ -13,8 +13,7 @@ namespace PriorityQueue
         private readonly IComparer<TPriority> _priorityComparer;
         private readonly Dictionary<TElement, int> _index;
 
-        private TPriority[] _priorities;
-        private TElement[] _elements;
+        private HeapEntry[] _heap;
         private int _count;
         private int _version;
 
@@ -43,13 +42,11 @@ namespace PriorityQueue
 
             if (initialCapacity == 0)
             {
-                _priorities = Array.Empty<TPriority>();
-                _elements = Array.Empty<TElement>();
+                _heap = Array.Empty<HeapEntry>();
             }
             else
             {
-                _priorities = new TPriority[initialCapacity];
-                _elements = new TElement[initialCapacity];
+                _heap = new HeapEntry[initialCapacity];
             }
 
             _index = new Dictionary<TElement, int>(initialCapacity, comparer: elementComparer);
@@ -63,34 +60,12 @@ namespace PriorityQueue
 
         public PrioritySet(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer, IEqualityComparer<TElement>? elementComparer)
         {
-            var priorities = Array.Empty<TPriority>();
-            var elements = Array.Empty<TElement>();
-            var heapIndex = new Dictionary<TElement, int>(elementComparer);
-            int count = 0;
-
-            foreach ((TElement element, TPriority priority) in values)
-            {
-                if (count == priorities.Length)
-                {
-                    Resize(ref priorities, ref elements);
-                }
-
-                if (!heapIndex.TryAdd(element, count))
-                {
-                    throw new ArgumentException("duplicate elements", nameof(values));
-                }
-
-                priorities[count] = priority;
-                elements[count] = element;
-                count++;
-            }
-
-            _priorities = priorities;
-            _elements = elements;
-            _index = heapIndex;
             _priorityComparer = comparer ?? Comparer<TPriority>.Default;
-            _count = count;
+            _index = new Dictionary<TElement, int>(elementComparer);
+            _heap = Array.Empty<HeapEntry>();
+            _count = 0;
 
+            AppendRaw(values);
             Heapify();
         }
         #endregion
@@ -116,7 +91,7 @@ namespace PriorityQueue
                 throw new InvalidOperationException("queue is empty");
             }
 
-            return _elements[0];
+            return _heap[0].Element;
         }
 
         public bool TryPeek(out TElement element, out TPriority priority)
@@ -128,8 +103,7 @@ namespace PriorityQueue
                 return false;
             }
 
-            element = _elements[0];
-            priority = _priorities[0];
+            (element, priority) = _heap[0];
             return true;
         }
 
@@ -161,16 +135,31 @@ namespace PriorityQueue
 
         public TElement EnqueueDequeue(TElement element, TPriority priority)
         {
-            if (_count == 0 || _priorityComparer.Compare(priority, _priorities[0]) <= 0)
+            if (_count == 0)
+            {
+                return element;
+            }
+
+            if (_index.ContainsKey(element))
+            {
+                // Set invariant validation assumes behaviour equivalent to
+                // calling Enqueue(); Dequeue() operations sequentially.
+                // Might consider changing to a Dequeue(); Enqueue() equivalent
+                // which is more forgiving under certain scenaria.
+                throw new InvalidOperationException("Duplicate element");
+            }
+
+            ref HeapEntry minEntry = ref _heap[0];
+            if (_priorityComparer.Compare(priority, minEntry.Priority) <= 0)
             {
                 return element;
             }
 
             _version++;
-            TElement minElement = _elements[0];
-            _index.Remove(minElement);
+            TElement minElement = minEntry.Element;
+            bool result = _index.Remove(minElement);
+            Debug.Assert(result, "could not find element in index");
             SiftDown(index: 0, in element, in priority);
-
             return minElement;
         }
 
@@ -179,9 +168,11 @@ namespace PriorityQueue
             _version++;
             if (_count > 0)
             {
-                //TODO: guard with RuntimeHelpers.IsReferenceOrContainsReferences<>()
-                Array.Clear(_priorities, 0, _count);
-                Array.Clear(_elements, 0, _count);
+                //if (RuntimeHelpers.IsReferenceOrContainsReferences<HeapEntry>())
+                {
+                    Array.Clear(_heap, 0, _count);
+                }
+
                 _index.Clear();
                 _count = 0;
             }
@@ -251,7 +242,8 @@ namespace PriorityQueue
 
                 if (queue._version == _version && _index < queue._count)
                 {
-                    _current = (queue._elements[_index], queue._priorities[_index]);
+                    ref HeapEntry entry = ref queue._heap[_index];
+                    _current = (entry.Element, entry.Priority);
                     _index++;
                     return true;
                 }
@@ -287,19 +279,20 @@ namespace PriorityQueue
 
         private void Heapify()
         {
-            for (int i = (_count  - 1) >> 2; i >= 0; i--)
+            HeapEntry[] heap = _heap;
+
+            for (int i = (_count - 1) >> 2; i >= 0; i--)
             {
-                TElement element = _elements[i];
-                TPriority priority = _priorities[i];
-                SiftDown(index: i, element, priority);
+                HeapEntry entry = heap[i]; // ensure struct is copied before sifting
+                SiftDown(i, in entry.Element, in entry.Priority);
             }
         }
 
         private void Insert(in TElement element, in TPriority priority)
         {
-            if (_count == _priorities.Length)
+            if (_count == _heap.Length)
             {
-                Resize(ref _priorities, ref _elements);
+                Resize(ref _heap);
             }
 
             SiftUp(index: _count++, in element, in priority);
@@ -309,44 +302,76 @@ namespace PriorityQueue
         {
             Debug.Assert(index < _count);
 
-            element = _elements[index];
-            priority = _priorities[index];
+            (element, priority) = _heap[index];
 
             int lastElementPos = --_count;
-            ref TPriority lastPriority = ref _priorities[lastElementPos];
-            ref TElement lastElement = ref _elements[lastElementPos];
+            ref HeapEntry lastElement = ref _heap[lastElementPos];
 
             if (lastElementPos > 0)
             {
-                SiftDown(index, in lastElement, in lastPriority);
+                SiftDown(index, in lastElement.Element, in lastElement.Priority);
             }
 
-            lastPriority = default!;
-            lastElement = default!;
-            _index.Remove(element);
+            //if (RuntimeHelpers.IsReferenceOrContainsReferences<HeapEntry>())
+            {
+                lastElement = default;
+            }
+
+            bool result = _index.Remove(element);
+            Debug.Assert(result, "could not find element in index");
         }
 
         private void UpdateIndex(int index, TPriority newPriority)
         {
             TElement element;
+            ref HeapEntry entry = ref _heap[index];
 
-            switch (_priorityComparer.Compare(newPriority, _priorities[index]))
+            switch (_priorityComparer.Compare(newPriority, entry.Priority))
             {
                 // priority is decreased, sift upward
                 case < 0:
-                    element = _elements[index];
+                    element = entry.Element; // make a copy of the element before sifting
                     SiftUp(index, element, newPriority);
                     return;
 
                 // priority is increased, sift downward
                 case > 0:
-                    element = _elements[index];
+                    element = entry.Element; // make a copy of the element before sifting
                     SiftDown(index, element, newPriority);
                     return;
 
                 // priority is same as before, take no action
-                case 0: return;
+                default: return;
             }
+        }
+
+        private void AppendRaw(IEnumerable<(TElement Element, TPriority Priority)> values)
+        {
+            // TODO: specialize on ICollection types
+            var heap = _heap;
+            var index = _index;
+            int count = _count;
+
+            foreach ((TElement element, TPriority priority) in values)
+            {
+                if (count == heap.Length)
+                {
+                    Resize(ref heap);
+                }
+
+                if (!index.TryAdd(element, count))
+                {
+                    throw new ArgumentException("duplicate elements", nameof(values));
+                }
+
+                ref HeapEntry entry = ref heap[count];
+                entry.Element = element;
+                entry.Priority = priority;
+                count++;
+            }
+
+            _heap = heap;
+            _count = count;
         }
 
         private void SiftUp(int index, in TElement element, in TPriority priority)
@@ -354,23 +379,22 @@ namespace PriorityQueue
             while (index > 0)
             {
                 int parentIndex = (index - 1) >> 2;
-                ref TPriority parentPriority = ref _priorities[parentIndex];
+                ref HeapEntry parent = ref _heap[parentIndex];
 
-                if (_priorityComparer.Compare(parentPriority, priority) <= 0)
+                if (_priorityComparer.Compare(parent.Priority, priority) <= 0)
                 {
                     // parentPriority <= priority, heap property is satisfed
                     break;
                 }
 
-                ref TElement parentElement = ref _elements[parentIndex];
-                _priorities[index] = parentPriority;
-                _elements[index] = parentElement;
-                _index[parentElement] = index;
+                _heap[index] = parent;
+                _index[parent.Element] = index;
                 index = parentIndex;
             }
 
-            _priorities[index] = priority;
-            _elements[index] = element;
+            ref HeapEntry entry = ref _heap[index];
+            entry.Element = element;
+            entry.Priority = priority;
             _index[element] = index;
         }
 
@@ -378,65 +402,66 @@ namespace PriorityQueue
         {
             int minChildIndex;
             int count = _count;
-            TPriority[] priorities = _priorities;
-            TElement[] elements = _elements;
+            HeapEntry[] heap = _heap;
 
             while ((minChildIndex = (index << 2) + 1) < count)
             {
                 // find the child with the minimal priority
-                ref TPriority minChildPriority = ref priorities[minChildIndex];
+                ref HeapEntry minChild = ref heap[minChildIndex];
                 int childUpperBound = Math.Min(count, minChildIndex + 4);
 
                 for (int nextChildIndex = minChildIndex + 1; nextChildIndex < childUpperBound; nextChildIndex++)
                 {
-                    ref TPriority nextChildPriority = ref priorities[nextChildIndex];
-                    if (_priorityComparer.Compare(nextChildPriority, minChildPriority) < 0)
+                    ref HeapEntry nextChild = ref heap[nextChildIndex];
+                    if (_priorityComparer.Compare(nextChild.Priority, minChild.Priority) < 0)
                     {
                         minChildIndex = nextChildIndex;
-                        minChildPriority = ref nextChildPriority;
+                        minChild = ref nextChild;
                     }
                 }
 
                 // compare with inserted priority
-                if (_priorityComparer.Compare(priority, minChildPriority) <= 0)
+                if (_priorityComparer.Compare(priority, minChild.Priority) <= 0)
                 {
                     // priority <= childPriority, heap property is satisfied
                     break;
                 }
 
-                ref TElement childElement = ref _elements[minChildIndex];
-                priorities[index] = minChildPriority;
-                elements[index] = elements[minChildIndex];
-                _index[childElement] = index;
+                heap[index] = minChild;
+                _index[minChild.Element] = index;
                 index = minChildIndex;
             }
 
-            _priorities[index] = priority;
-            _elements[index] = element;
+            ref HeapEntry entry = ref heap[index];
+            entry.Element = element;
+            entry.Priority = priority;
             _index[element] = index;
         }
 
-        private void Resize(ref TPriority[] priorities, ref TElement[] elements)
+        private void Resize(ref HeapEntry[] heap)
         {
-            Debug.Assert(priorities.Length == elements.Length);
+            int newSize = heap.Length == 0 ? DefaultCapacity : 2 * heap.Length;
+            Array.Resize(ref heap, newSize);
+        }
 
-            int newSize = priorities.Length == 0 ? DefaultCapacity : 2 * priorities.Length;
+        private struct HeapEntry
+        {
+            public TElement Element;
+            public TPriority Priority;
 
-            Array.Resize(ref priorities, newSize);
-            Array.Resize(ref elements, newSize);
+            public void Deconstruct(out TElement element, out TPriority priority)
+            {
+                element = Element;
+                priority = Priority;
+            }
         }
 
 #if DEBUG
         public void ValidateInternalState()
         {
-            if (_elements.Length < _count)
+            if (_heap.Length < _count)
             {
                 throw new Exception("invalid elements array length");
-            }
-
-            if (_priorities.Length < _count)
-            {
-                throw new Exception("invalid priorities array length");
             }
 
             if (_index.Count != _count)
@@ -444,7 +469,7 @@ namespace PriorityQueue
                 throw new Exception("Invalid heap index count");
             }
 
-            foreach ((var element, var idx) in _elements.Select((x, i) => (x, i)).Skip(_count))
+            foreach ((var element, var idx) in _heap.Select((x, i) => (x.Element, i)).Skip(_count))
             {
                 if (!IsDefault(element))
                 {
@@ -452,7 +477,7 @@ namespace PriorityQueue
                 }
             }
 
-            foreach ((var priority, var idx) in _priorities.Select((x, i) => (x, i)).Skip(_count))
+            foreach ((var priority, var idx) in _heap.Select((x, i) => (x.Priority, i)).Skip(_count))
             {
                 if (!IsDefault(priority))
                 {
@@ -462,9 +487,9 @@ namespace PriorityQueue
 
             foreach (var kvp in _index)
             {
-                if (!_index.Comparer.Equals(_elements[kvp.Value], kvp.Key))
+                if (!_index.Comparer.Equals(_heap[kvp.Value].Element, kvp.Key))
                 {
-                    throw new Exception($"Element '{kvp.Key}' maps to invalid heap location {kvp.Value} which contains '{_elements[kvp.Value]}'");
+                    throw new Exception($"Element '{kvp.Key}' maps to invalid heap location {kvp.Value} which contains '{_heap[kvp.Value].Element}'");
                 }
             }
 
