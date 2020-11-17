@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace PriorityQueue
 {
-    public class PriorityQueue<TElement, TPriority> : IReadOnlyCollection<(TElement Element, TPriority Priority)>, ICollection
+    public class PriorityQueue<TElement, TPriority>
     {
         private const int DefaultCapacity = 4;
 
@@ -16,6 +16,8 @@ namespace PriorityQueue
         private HeapEntry[] _heap;
         private int _count;
         private int _version;
+
+        private UnorderedItemsCollection? _unorderedItemsCollection;
 
         #region Constructors
         public PriorityQueue() : this(0, null)
@@ -103,6 +105,9 @@ namespace PriorityQueue
                 }
             }
         }
+
+        // TODO optimize
+        public void EnqueueRange(IEnumerable<TElement> elements, TPriority priority) => EnqueueRange(elements.Select(e => (e, priority)));
 
         public TElement Peek()
         {
@@ -196,96 +201,26 @@ namespace PriorityQueue
             }
         }
 
-        public Enumerator GetEnumerator() => new Enumerator(this);
-        IEnumerator<(TElement Element, TPriority Priority)> IEnumerable<(TElement Element, TPriority Priority)>.GetEnumerator() => new Enumerator(this);
-        IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
-
-        bool ICollection.IsSynchronized => false;
-        object ICollection.SyncRoot => this;
-        void ICollection.CopyTo(Array array, int index)
+        public void EnsureCapacity(int capacity)
         {
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-            if (array.Rank != 1)
-                throw new ArgumentException("SR.Arg_RankMultiDimNotSupported", nameof(array));
-            if (index < 0)
-                throw new ArgumentOutOfRangeException(nameof(index), "SR.ArgumentOutOfRange_Index");
-
-            int arrayLen = array.Length;
-            if (arrayLen - index < _count)
-                throw new ArgumentException("SR.Argument_InvalidOffLen");
-
-            int numToCopy = _count;
-            HeapEntry[] heap = _heap;
-
-            for (int i = 0; i < numToCopy; i++)
+            if (capacity < 0)
             {
-                ref HeapEntry entry = ref heap[i];
-                array.SetValue((entry.Element, entry.Priority), index + i);
+                throw new ArgumentOutOfRangeException();
+            }
+
+            if (capacity > _heap.Length)
+            {
+                Array.Resize(ref _heap, capacity);
             }
         }
 
-        public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator
-        {
-            private readonly PriorityQueue<TElement, TPriority> _queue;
-            private readonly int _version;
-            private int _index;
-            private (TElement Element, TPriority Priority) _current;
+        public UnorderedItemsCollection UnorderedItems => _unorderedItemsCollection ??= new UnorderedItemsCollection(this);
 
-            internal Enumerator(PriorityQueue<TElement, TPriority> queue)
-            {
-                _version = queue._version;
-                _queue = queue;
-                _index = 0;
-                _current = default;
-            }
-
-            public bool MoveNext()
-            {
-                PriorityQueue<TElement, TPriority> queue = _queue;
-
-                if (queue._version == _version && _index < queue._count)
-                {
-                    ref HeapEntry entry = ref queue._heap[_index];
-                    _current = (entry.Element, entry.Priority);
-                    _index++;
-                    return true;
-                }
-
-                if (queue._version != _version)
-                {
-                    throw new InvalidOperationException("collection was modified");
-                }
-
-                return false;
-            }
-
-            public (TElement Element, TPriority Priority) Current => _current;
-            object IEnumerator.Current => _current;
-
-            public void Reset()
-            {
-                if (_queue._version != _version)
-                {
-                    throw new InvalidOperationException("collection was modified");
-                }
-
-                _index = 0;
-                _current = default;
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
-        public ElementCollection Elements => new ElementCollection(this);
-
-        public class ElementCollection : IReadOnlyCollection<TElement>, ICollection
+        public class UnorderedItemsCollection : IReadOnlyCollection<(TElement Element, TPriority Priority)>, ICollection
         {
             private readonly PriorityQueue<TElement, TPriority> _priorityQueue;
 
-            internal ElementCollection(PriorityQueue<TElement, TPriority> priorityQueue)
+            internal UnorderedItemsCollection(PriorityQueue<TElement, TPriority> priorityQueue)
             {
                 _priorityQueue = priorityQueue;
             }
@@ -294,7 +229,13 @@ namespace PriorityQueue
             public bool IsSynchronized => false;
             public object SyncRoot => _priorityQueue;
 
-            public void CopyTo(Array array, int index)
+            public Enumerator GetEnumerator() => new Enumerator(_priorityQueue);
+            IEnumerator<(TElement Element, TPriority Priority)> IEnumerable<(TElement Element, TPriority Priority)>.GetEnumerator() => new Enumerator(_priorityQueue);
+            IEnumerator IEnumerable.GetEnumerator() => new Enumerator(_priorityQueue);
+
+            bool ICollection.IsSynchronized => false;
+            object ICollection.SyncRoot => this;
+            void ICollection.CopyTo(Array array, int index)
             {
                 if (array == null)
                     throw new ArgumentNullException(nameof(array));
@@ -312,26 +253,24 @@ namespace PriorityQueue
 
                 for (int i = 0; i < numToCopy; i++)
                 {
-                    array.SetValue(heap[i].Element, index + i);
+                    ref HeapEntry entry = ref heap[i];
+                    array.SetValue((entry.Element, entry.Priority), index + i);
                 }
             }
 
-            public IEnumerator<TElement> GetEnumerator() => new Enumerator(_priorityQueue);
-            IEnumerator IEnumerable.GetEnumerator() => new Enumerator(_priorityQueue);
-
-            public struct Enumerator : IEnumerator<TElement>, IEnumerator
+            public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator
             {
                 private readonly PriorityQueue<TElement, TPriority> _queue;
                 private readonly int _version;
                 private int _index;
-                private TElement _current;
+                private (TElement Element, TPriority Priority) _current;
 
                 internal Enumerator(PriorityQueue<TElement, TPriority> queue)
                 {
                     _version = queue._version;
                     _queue = queue;
                     _index = 0;
-                    _current = default!;
+                    _current = default;
                 }
 
                 public bool MoveNext()
@@ -340,7 +279,8 @@ namespace PriorityQueue
 
                     if (queue._version == _version && _index < queue._count)
                     {
-                        _current = queue._heap[_index].Element;
+                        ref HeapEntry entry = ref queue._heap[_index];
+                        _current = (entry.Element, entry.Priority);
                         _index++;
                         return true;
                     }
@@ -353,8 +293,8 @@ namespace PriorityQueue
                     return false;
                 }
 
-                public TElement Current => _current;
-                object? IEnumerator.Current => _current;
+                public (TElement Element, TPriority Priority) Current => _current;
+                object IEnumerator.Current => _current;
 
                 public void Reset()
                 {
@@ -364,7 +304,7 @@ namespace PriorityQueue
                     }
 
                     _index = 0;
-                    _current = default!;
+                    _current = default;
                 }
 
                 public void Dispose()

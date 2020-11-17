@@ -41,7 +41,7 @@ namespace PriorityQueue.Tests
             var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
 
             (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) };
-            Assert.Equal(expected, pq.ToArray());
+            Assert.Equal(expected, pq.UnorderedItems.ToArray());
         }
 
         [Property(MaxTest = 10_000)]
