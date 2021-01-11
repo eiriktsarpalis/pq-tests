@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -119,12 +120,12 @@ namespace PriorityQueue
             return _heap[0].Element;
         }
 
-        public bool TryPeek(out TElement element, out TPriority priority)
+        public bool TryPeek([MaybeNullWhen(false)] out TElement element, [MaybeNullWhen(false)] out TPriority priority)
         {
             if (_count == 0)
             {
-                element = default!;
-                priority = default!;
+                element = default;
+                priority = default;
                 return false;
             }
 
@@ -144,12 +145,12 @@ namespace PriorityQueue
             return result;
         }
 
-        public bool TryDequeue(out TElement element, out TPriority priority)
+        public bool TryDequeue([MaybeNullWhen(false)] out TElement element, [MaybeNullWhen(false)] out TPriority priority)
         {
             if (_count == 0)
             {
-                element = default!;
-                priority = default!;
+                element = default;
+                priority = default;
                 return false;
             }
 
