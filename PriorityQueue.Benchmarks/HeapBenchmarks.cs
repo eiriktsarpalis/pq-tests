@@ -16,6 +16,7 @@ namespace PriorityQueue.Benchmarks
         private PriorityQueue<int> _priorityQueue2;
         private PriorityQueue<int, int> _priorityQueue;
         private PriorityQueue_Comparable<int, int> _priorityQueueComparable;
+        private PriorityQueue_InlineComparer<int, int> _priorityQueueInlineComparer;
         private PrioritySet<int, int> _prioritySet;
         private PairingHeap<int, int> _pairingHeap;
 
@@ -30,6 +31,7 @@ namespace PriorityQueue.Benchmarks
             }
 
             _priorityQueueComparable = new PriorityQueue_Comparable<int, int>(initialCapacity: Size);
+            _priorityQueueInlineComparer = new PriorityQueue_InlineComparer<int, int>(initialCapacity: Size);
             _priorityQueue2 = new PriorityQueue<int>(initialCapacity: Size);
             _priorityQueue = new PriorityQueue<int, int>(initialCapacity: Size);
             _prioritySet = new PrioritySet<int, int>(initialCapacity: Size);
@@ -40,6 +42,29 @@ namespace PriorityQueue.Benchmarks
         public void PriorityQueue()
         {
             var queue = _priorityQueue;
+            var priorities = _priorities;
+
+            for (int i = 0; i < Size; i++)
+            {
+                queue.Enqueue(i, priorities[i]);
+            }
+
+            for (int i = Size; i < 2 * Size; i++)
+            {
+                queue.Dequeue();
+                queue.Enqueue(i, priorities[i]);
+            }
+
+            while (queue.Count > 0)
+            {
+                queue.Dequeue();
+            }
+        }
+
+        [Benchmark]
+        public void PriorityQueue_InlineComparer()
+        {
+            var queue = _priorityQueueInlineComparer;
             var priorities = _priorities;
 
             for (int i = 0; i < Size; i++)
@@ -82,73 +107,73 @@ namespace PriorityQueue.Benchmarks
             }
         }
 
-        [Benchmark]
-        public void PriorityQueue2()
-        {
-            var queue = _priorityQueue2;
-            var priorities = _priorities;
+        //[Benchmark]
+        //public void PriorityQueue2()
+        //{
+        //    var queue = _priorityQueue2;
+        //    var priorities = _priorities;
 
-            for (int i = 0; i < Size; i++)
-            {
-                queue.Enqueue(priorities[i]);
-            }
+        //    for (int i = 0; i < Size; i++)
+        //    {
+        //        queue.Enqueue(priorities[i]);
+        //    }
 
-            for (int i = Size; i < 2 * Size; i++)
-            {
-                queue.Dequeue();
-                queue.Enqueue(priorities[i]);
-            }
+        //    for (int i = Size; i < 2 * Size; i++)
+        //    {
+        //        queue.Dequeue();
+        //        queue.Enqueue(priorities[i]);
+        //    }
 
-            while (queue.Count > 0)
-            {
-                queue.Dequeue();
-            }
-        }
+        //    while (queue.Count > 0)
+        //    {
+        //        queue.Dequeue();
+        //    }
+        //}
 
-        [Benchmark]
-        public void PrioritySet()
-        {
-            var queue = _prioritySet;
-            var priorities = _priorities;
+        //[Benchmark]
+        //public void PrioritySet()
+        //{
+        //    var queue = _prioritySet;
+        //    var priorities = _priorities;
 
-            for (int i = 0; i < Size; i++)
-            {
-                queue.Enqueue(i, priorities[i]);
-            }
+        //    for (int i = 0; i < Size; i++)
+        //    {
+        //        queue.Enqueue(i, priorities[i]);
+        //    }
 
-            for (int i = Size; i < 2 * Size; i++)
-            {
-                queue.Dequeue();
-                queue.Enqueue(i, priorities[i]);
-            }
+        //    for (int i = Size; i < 2 * Size; i++)
+        //    {
+        //        queue.Dequeue();
+        //        queue.Enqueue(i, priorities[i]);
+        //    }
 
-            while (queue.Count > 0)
-            {
-                queue.Dequeue();
-            }
-        }
+        //    while (queue.Count > 0)
+        //    {
+        //        queue.Dequeue();
+        //    }
+        //}
 
-        [Benchmark]
-        public void PairingHeap()
-        {
-            var heap = _pairingHeap;
-            var priorities = _priorities;
+        //[Benchmark]
+        //public void PairingHeap()
+        //{
+        //    var heap = _pairingHeap;
+        //    var priorities = _priorities;
 
-            for (int i = 0; i < Size; i++)
-            {
-                heap.Add(priorities[i], i);
-            }
+        //    for (int i = 0; i < Size; i++)
+        //    {
+        //        heap.Add(priorities[i], i);
+        //    }
 
-            for (int i = Size; i < 2 * Size; i++)
-            {
-                heap.Pop();
-                heap.Add(priorities[i], i);
-            }
+        //    for (int i = Size; i < 2 * Size; i++)
+        //    {
+        //        heap.Pop();
+        //        heap.Add(priorities[i], i);
+        //    }
 
-            while (heap.Count > 0)
-            {
-                heap.Pop();
-            }
-        }
+        //    while (heap.Count > 0)
+        //    {
+        //        heap.Pop();
+        //    }
+        //}
     }
 }
