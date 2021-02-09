@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace PriorityQueue
 {
-    public class PriorityQueue<TElement, TPriority>
+    public class PriorityQueue_Binary<TElement, TPriority>
     {
         private const int DefaultCapacity = 4;
 
@@ -21,22 +21,22 @@ namespace PriorityQueue
         private UnorderedItemsCollection? _unorderedItemsCollection;
 
         #region Constructors
-        public PriorityQueue() : this(0, null)
+        public PriorityQueue_Binary() : this(0, null)
         {
 
         }
 
-        public PriorityQueue(int initialCapacity) : this(initialCapacity, null)
+        public PriorityQueue_Binary(int initialCapacity) : this(initialCapacity, null)
         {
 
         }
 
-        public PriorityQueue(IComparer<TPriority>? comparer) : this(0, comparer)
+        public PriorityQueue_Binary(IComparer<TPriority>? comparer) : this(0, comparer)
         {
 
         }
 
-        public PriorityQueue(int initialCapacity, IComparer<TPriority>? comparer)
+        public PriorityQueue_Binary(int initialCapacity, IComparer<TPriority>? comparer)
         {
             if (initialCapacity < 0)
             {
@@ -55,12 +55,12 @@ namespace PriorityQueue
             _priorityComparer = comparer ?? Comparer<TPriority>.Default;
         }
 
-        public PriorityQueue(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, null)
+        public PriorityQueue_Binary(IEnumerable<(TElement Element, TPriority Priority)> values) : this(values, null)
         {
 
         }
 
-        public PriorityQueue(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer)
+        public PriorityQueue_Binary(IEnumerable<(TElement Element, TPriority Priority)> values, IComparer<TPriority>? comparer)
         {
             _priorityComparer = comparer ?? Comparer<TPriority>.Default;
             _heap = Array.Empty<HeapEntry>();
@@ -223,9 +223,9 @@ namespace PriorityQueue
 
         public class UnorderedItemsCollection : IReadOnlyCollection<(TElement Element, TPriority Priority)>, ICollection
         {
-            private readonly PriorityQueue<TElement, TPriority> _priorityQueue;
+            private readonly PriorityQueue_Binary<TElement, TPriority> _priorityQueue;
 
-            internal UnorderedItemsCollection(PriorityQueue<TElement, TPriority> priorityQueue)
+            internal UnorderedItemsCollection(PriorityQueue_Binary<TElement, TPriority> priorityQueue)
             {
                 _priorityQueue = priorityQueue;
             }
@@ -265,12 +265,12 @@ namespace PriorityQueue
 
             public struct Enumerator : IEnumerator<(TElement Element, TPriority Priority)>, IEnumerator
             {
-                private readonly PriorityQueue<TElement, TPriority> _queue;
+                private readonly PriorityQueue_Binary<TElement, TPriority> _queue;
                 private readonly int _version;
                 private int _index;
                 private (TElement Element, TPriority Priority) _current;
 
-                internal Enumerator(PriorityQueue<TElement, TPriority> queue)
+                internal Enumerator(PriorityQueue_Binary<TElement, TPriority> queue)
                 {
                     _version = queue._version;
                     _queue = queue;
@@ -280,7 +280,7 @@ namespace PriorityQueue
 
                 public bool MoveNext()
                 {
-                    PriorityQueue<TElement, TPriority> queue = _queue;
+                    PriorityQueue_Binary<TElement, TPriority> queue = _queue;
 
                     if (queue._version == _version && _index < queue._count)
                     {
@@ -318,12 +318,12 @@ namespace PriorityQueue
             }
         }
 
-        #region Private Methods
+#region Private Methods
         private void Heapify()
         {
             HeapEntry[] heap = _heap;
 
-            for (int i = (_count - 1) >> 2; i >= 0; i--)
+            for (int i = (_count - 1) >> 1; i >= 0; i--)
             {
                 HeapEntry entry = heap[i]; // ensure struct is copied before sifting
                 SiftDown(i, in entry.Element, in entry.Priority);
@@ -361,7 +361,6 @@ namespace PriorityQueue
 
             int lastElementPos = --_count;
             ref HeapEntry lastElement = ref _heap[lastElementPos];
-
             if (lastElementPos > 0)
             {
 #if SIFTDOWN_EMPTY_NODES
@@ -381,7 +380,7 @@ namespace PriorityQueue
         {
             while (index > 0)
             {
-                int parentIndex = (index - 1) >> 2;
+                int parentIndex = (index - 1) >> 1;
                 ref HeapEntry parent = ref _heap[parentIndex];
 
                 if (_priorityComparer.Compare(parent.Priority, priority) <= 0)
@@ -405,19 +404,18 @@ namespace PriorityQueue
             int count = _count;
             HeapEntry[] heap = _heap;
 
-            while ((minChildIndex = (index << 2) + 1) < count)
+            while ((minChildIndex = (index << 1) + 1) < count)
             {
-                // find the child with the minimal priority
                 ref HeapEntry minChild = ref heap[minChildIndex];
-                int childUpperBound = Math.Min(count, minChildIndex + 4);
+                int rightChildIndex = minChildIndex + 1;
 
-                for (int nextChildIndex = minChildIndex + 1; nextChildIndex < childUpperBound; nextChildIndex++)
+                if (rightChildIndex < count)
                 {
-                    ref HeapEntry nextChild = ref heap[nextChildIndex];
-                    if (_priorityComparer.Compare(nextChild.Priority, minChild.Priority) < 0)
+                    ref HeapEntry rightChild = ref heap[rightChildIndex];
+                    if (_priorityComparer.Compare(minChild.Priority, rightChild.Priority) > 0)
                     {
-                        minChildIndex = nextChildIndex;
-                        minChild = ref nextChild;
+                        minChild = ref rightChild;
+                        minChildIndex = rightChildIndex;
                     }
                 }
 
@@ -450,19 +448,18 @@ namespace PriorityQueue
             int minChildIndex;
             HeapEntry[] heap = _heap;
 
-            while ((minChildIndex = (emptyNodeIndex << 2) + 1) < count)
+            while ((minChildIndex = (emptyNodeIndex << 1) + 1) < count)
             {
-                // find the child with the minimal priority
+                int rightChildIndex = minChildIndex + 1;
                 ref HeapEntry minChild = ref heap[minChildIndex];
-                int childUpperBound = Math.Min(count, minChildIndex + 4);
 
-                for (int nextChildIndex = minChildIndex + 1; nextChildIndex < childUpperBound; nextChildIndex++)
+                if (rightChildIndex < count)
                 {
-                    ref HeapEntry nextChild = ref heap[nextChildIndex];
-                    if (_priorityComparer.Compare(nextChild.Priority, minChild.Priority) < 0)
+                    ref HeapEntry rightChild = ref heap[rightChildIndex];
+                    if (_priorityComparer.Compare(minChild.Priority, rightChild.Priority) > 0)
                     {
-                        minChildIndex = nextChildIndex;
-                        minChild = ref nextChild;
+                        minChild = ref rightChild;
+                        minChildIndex = rightChildIndex;
                     }
                 }
 
@@ -529,6 +526,6 @@ namespace PriorityQueue
             }
         }
 #endif
-        #endregion
+#endregion
     }
 }

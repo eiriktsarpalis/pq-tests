@@ -16,7 +16,7 @@ namespace PriorityQueue.Tests
             pq.Enqueue("John", 1940);
             pq.Enqueue("Paul", 1942);
             pq.Enqueue("George", 1943);
-            pq.Enqueue("Ringo", 1940);
+            pq.Enqueue("Ringo", 1941);
 
             Assert.Equal("John", pq.Dequeue());
             Assert.Equal("Ringo", pq.Dequeue());
@@ -27,7 +27,7 @@ namespace PriorityQueue.Tests
         [Fact]
         public static void Simple_Priority_Queue_Heapify()
         {
-            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
+            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
 
             Assert.Equal("John", pq.Dequeue());
             Assert.Equal("Ringo", pq.Dequeue());
@@ -38,9 +38,9 @@ namespace PriorityQueue.Tests
         [Fact]
         public static void Simple_Priority_Queue_Enumeration()
         {
-            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) });
+            var pq = new PriorityQueue<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
 
-            (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1940) };
+            (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) };
             Assert.Equal(expected, pq.UnorderedItems.ToArray());
         }
 

@@ -1,18 +1,17 @@
 ﻿using System;
 using Xunit;
-using FsCheck;
 using FsCheck.Xunit;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace PriorityQueue.Tests
 {
-    public class PriorityQueue_ComparableTests
+    public class PriorityQueue_BinaryTests
     {
         [Fact]
         public static void Simple_Priority_Queue()
         {
-            var pq = new PriorityQueue_Comparable<string, int>();
+            var pq = new PriorityQueue_Binary<string, int>();
 
             pq.Enqueue("John", 1940);
             pq.Enqueue("Paul", 1942);
@@ -28,7 +27,7 @@ namespace PriorityQueue.Tests
         [Fact]
         public static void Simple_Priority_Queue_Heapify()
         {
-            var pq = new PriorityQueue_Comparable<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
+            var pq = new PriorityQueue_Binary<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
 
             Assert.Equal("John", pq.Dequeue());
             Assert.Equal("Ringo", pq.Dequeue());
@@ -39,23 +38,22 @@ namespace PriorityQueue.Tests
         [Fact]
         public static void Simple_Priority_Queue_Enumeration()
         {
-            var pq = new PriorityQueue_Comparable<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
+            var pq = new PriorityQueue_Binary<string, int>(new (string, int)[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) });
 
-            (string, int)[] expected = new[] { ("John", 1940), ("Paul", 1942), ("George", 1943), ("Ringo", 1941) };
+            (string, int)[] expected = new[] { ("John", 1940), ("Ringo", 1941), ("George", 1943), ("Paul", 1942) };
             Assert.Equal(expected, pq.UnorderedItems.ToArray());
         }
 
         [Property(MaxTest = 10_000)]
-        public static void HeapSort_Should_Work(NonNull<string>[] seedInputs)
+        public static void HeapSort_Should_Work(string[] inputs)
         {
-            string[] inputs = seedInputs.Select(x => x.Get).ToArray();
             string[] expected = inputs.OrderBy(inp => inp).ToArray();
             string[] actual = HeapSort(inputs).ToArray();
             Assert.Equal(expected, actual);
 
             static IEnumerable<string> HeapSort(string[] inputs)
             {
-                var pq = new PriorityQueue_Comparable<string, string>();
+                var pq = new PriorityQueue_Binary<string, string>();
                 ValidateState(pq);
 
                 foreach (string input in inputs)
@@ -75,16 +73,15 @@ namespace PriorityQueue.Tests
         }
 
         [Property(MaxTest = 10_000)]
-        public static void HeapSort_Ctor_Should_Work(NonNull<string>[] seedInputs)
+        public static void HeapSort_Ctor_Should_Work(string[] inputs)
         {
-            string[] inputs = seedInputs.Select(x => x.Get).ToArray();
             string[] expected = inputs.OrderBy(inp => inp).ToArray();
             string[] actual = HeapSort(inputs).ToArray();
             Assert.Equal(expected, actual);
 
             static IEnumerable<string> HeapSort(string[] inputs)
             {
-                var pq = new PriorityQueue_Comparable<string, string>(inputs.Select(x => (x, x)));
+                var pq = new PriorityQueue_Binary<string, string>(inputs.Select(x => (x, x)));
 
                 ValidateState(pq);
                 Assert.Equal(inputs.Length, pq.Count);
@@ -97,8 +94,7 @@ namespace PriorityQueue.Tests
             }
         }
 
-        private static void ValidateState<TElement, TPriority>(PriorityQueue_Comparable<TElement, TPriority> pq)
-            where TPriority : notnull, IComparable<TPriority>
+        private static void ValidateState<TElement, TPriority>(PriorityQueue_Binary<TElement, TPriority> pq)
         {
 #if DEBUG
             pq.ValidateInternalState();
